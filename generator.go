@@ -2,41 +2,45 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/julien-roland/go-randtext/randtext"
 )
 
-const text = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
-commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-occaecat cupidatat non proident, sunt in culpa qui officia deserunt
-mollit anim id est laborum.`
+var number = flag.Uint("number", 1, "number of sentences")
 
 func main() {
-	if len(os.Args) != 2 || os.Args[1] == "-h" || os.Args[1] == "--help" {
-		fmt.Fprintln(os.Stderr, "usage: generator number")
+	flag.Usage = usage
+	flag.Parse()
+
+	if flag.NArg() != 1 {
+		fmt.Fprintln(os.Stderr, "generator: missing sample text")
 		os.Exit(1)
 	}
 
-	number, err := strconv.Atoi(os.Args[1])
+	file, err := os.Open(flag.Arg(0))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "generator: number: %s\n", err)
-		os.Exit(2)
+		fmt.Fprintf(os.Stderr, "counter: %s\n", err)
+		os.Exit(1)
 	}
+	defer file.Close()
 
-	model := randtext.NewMarkovModel(strings.NewReader(text))
+	model := randtext.NewMarkovModel(file)
 	b := bufio.NewWriterSize(os.Stdout, 4096)
 	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < number; i++ {
+	for i := uint(0); i < *number; i++ {
 		fmt.Fprintln(b, model.Sentence())
 	}
 	b.Flush()
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, "usage: generator [options] sample")
+	fmt.Fprintf(os.Stderr, "Flags:\n")
+	flag.PrintDefaults()
+	os.Exit(2)
 }
